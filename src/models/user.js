@@ -1,26 +1,92 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+const validator = require("validator")
 
-const userSchema = new mongoose.Schema({ //Schema means the structure of the data that we want to store in the database. It defines the fields and their types, as well as any validation rules or default values that we want to apply to those fields.
+const userSchema = new mongoose.Schema(
+  {
     firstName: {
-        type: String,
+      type: String,
+      required: true,
+      minLength: 4,
+      maxLength: 50,
+      trim: true,
     },
-    lastName: {
-        type: String,
-    },
-    email: {
-        type: String,
-    },
-    password: {
-        type: String,
-    },
-    age: {
-        type: Number,
-    },
-    gender: {
-        type: String,
-    }
-})
 
-const User = mongoose.model("User", userSchema); //Model is a class that we can use to create and read documents from the database. It is created from a schema and provides an interface for interacting with the database.
+    lastName: {
+      type: String,
+      trim: true,
+      maxLength: 50,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+
+      validate(value) {
+        if (!validator.isEmail(value)) {
+          throw new Error("Invalid email address: " + value);
+        }
+      },
+    },
+
+    password: {
+      type: String,
+      required: true,
+      validate(value){
+        if(!validator.isStrongPassword(value)){ // db level validation using validator library
+          throw new Error("Enter a Strong Password: " + value);
+        }
+      },
+    },
+
+    age: {
+      type: Number,
+      min: 18,
+      max: 100,
+    },
+
+    gender: {
+      type: String,
+      enum: {
+        values: ["male", "female", "others"],
+        message: "Gender must be male, female, or others",
+      },
+    },
+
+    photoUrl: {
+      type: String,
+      default: "https://geographyandyou.com/images/user-profile.png",
+
+       validate(value){
+        if(!validator.isURL(value)){
+          throw new Error("Invalid Photo URL: " + value);
+        }
+      },
+    },
+
+    about: {
+      type: String,
+      default: "This is a default about of the user!",
+      maxLength: 200,
+      trim: true,
+    },
+
+    skills: {
+      type: [String],
+      validate(value) {
+        if (value.length > 10) {
+          throw new Error("User cannot have more than 10 skills");
+        }
+      },
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;
