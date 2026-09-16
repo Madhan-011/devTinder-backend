@@ -55,7 +55,7 @@ app.post("/login", async (req, res) => {
       //Create a JWT Token
 
       //Ad the token to the cookie and send the response back to the user
-      const token = await jwt.sign({ _id: user._id }, "dev@TINDER123"); //1st parameter is some data to hide and 2nd is secret/private key
+      const token = await jwt.sign({ _id: user._id }, "..."); //1st parameter is some data to hide and 2nd is secret/private key
 
       res.cookie("token", token); // res.cookie given by express
 
@@ -77,7 +77,7 @@ app.get("/profile", async (req, res) => {
     if (!token) {
       throw new Error("Invalid Token");
     }
-    const decodedData = await jwt.verify(token, "dev@TINDER123"); //used to verify the jwt
+    const decodedData = await jwt.verify(token, "..."); //used to verify the jwt
 
     const { _id } = decodedData;
     const user = await User.findById(_id);
@@ -89,7 +89,7 @@ app.get("/profile", async (req, res) => {
   } catch (err) {
     res.status(400).send("Error : " + err.message);
   }
-  
+
 });
 
 //Get Api for one
