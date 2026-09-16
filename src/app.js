@@ -3,9 +3,12 @@ const connectDB = require("./config/database");
 const User = require("./models/user");
 const { validateSignUpData } = require("./utils/validation");
 const bcrypt = require("bcrypt");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 
+app.use(cookieParser());
 app.use(express.json()); // Here json is a middleware which is used to convert the incoming dynamic json data to js object and give it to the req.body
 
 //Create a user
@@ -37,26 +40,57 @@ app.post("/signup", async (req, res) => {
 });
 
 //Login Api
-app.post("/login", async (req,res) => {
-  try{
-    const {email,password} = req.body
-    
-    const user = await User.findOne({email:email})
-    if(!user){
-      throw new Error("Invalid Credentials")
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email: email });
+    if (!user) {
+      throw new Error("Invalid Credentials");
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password)
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
-    if(isPasswordValid){
-      res.send("Login Successful...")
-    }else{
-      throw new Error("Invalid Credentials")
+    if (isPasswordValid) {
+      //Create a JWT Token
+
+      //Ad the token to the cookie and send the response back to the user
+      const token = await jwt.sign({ _id: user._id }, "dev@TINDER123"); //1st parameter is some data to hide and 2nd is secret/private key
+
+      res.cookie("token", token); // res.cookie given by express
+
+      res.send("Login Successful...");
+    } else {
+      throw new Error("Invalid Credentials");
     }
-  }catch(err){
+  } catch (err) {
     res.status(400).send("Error : " + err.message);
   }
-})
+});
+
+app.get("/profile", async (req, res) => {
+
+  try {
+    const cookies = req.cookies;
+
+    const { token } = cookies;
+    if (!token) {
+      throw new Error("Invalid Token");
+    }
+    const decodedData = await jwt.verify(token, "dev@TINDER123"); //used to verify the jwt
+
+    const { _id } = decodedData;
+    const user = await User.findById(_id);
+    if (!user) {
+      throw new Error("User does not exists");
+    }
+
+    res.send(user);
+  } catch (err) {
+    res.status(400).send("Error : " + err.message);
+  }
+  
+});
 
 //Get Api for one
 app.get("/user", async (req, res) => {
