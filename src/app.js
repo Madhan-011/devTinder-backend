@@ -5,10 +5,11 @@ const { validateSignUpData } = require("./utils/validation");
 const bcrypt = require("bcrypt");
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
+const { userAuth } = require("./middlewares/auth");
 
 const app = express();
 
-app.use(cookieParser());
+app.use(cookieParser()); // It is mainly for parsing/reading cookies
 app.use(express.json()); // Here json is a middleware which is used to convert the incoming dynamic json data to js object and give it to the req.body
 
 //Create a user
@@ -23,7 +24,6 @@ app.post("/signup", async (req, res) => {
 
     //Encrypt Password using bcrypt and salt rounds
     const passwordHash = await bcrypt.hash(password, 10);
-    console.log(passwordHash);
 
     const user = new User({
       firstName,
@@ -49,17 +49,18 @@ app.post("/login", async (req, res) => {
       throw new Error("Invalid Credentials");
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await user.validatePassword(password)
 
     if (isPasswordValid) {
       //Create a JWT Token
 
       //Ad the token to the cookie and send the response back to the user
-      const token = await jwt.sign({ _id: user._id }, "..."); //1st parameter is some data to hide and 2nd is secret/private key
+      const token = await user.getJWT()
 
-      res.cookie("token", token); // res.cookie given by express
+      res.cookie("token", token, {expires: new Date(Date.now()+ 8 + 3600000)}); // res.cookie given by express - expires = 8h
 
       res.send("Login Successful...");
+      
     } else {
       throw new Error("Invalid Credentials");
     }
@@ -68,90 +69,25 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.get("/profile", async (req, res) => {
+app.get("/profile", userAuth, async (req, res) => {
 
-  try {
-    const cookies = req.cookies;
-
-    const { token } = cookies;
-    if (!token) {
-      throw new Error("Invalid Token");
-    }
-    const decodedData = await jwt.verify(token, "..."); //used to verify the jwt
-
-    const { _id } = decodedData;
-    const user = await User.findById(_id);
-    if (!user) {
-      throw new Error("User does not exists");
-    }
+ 
+    const user = req.user;
 
     res.send(user);
-  } catch (err) {
+ 
+});
+
+app.post("/sendConnectionRequest", userAuth, async (req,res) => {
+  try{
+  const user = req.user
+  console.log("Sending a connection request")
+  res.send(user.firstName+" "+"sent the conection request!!!")
+  }catch(err){
     res.status(400).send("Error : " + err.message);
   }
+})
 
-});
-
-//Get Api for one
-app.get("/user", async (req, res) => {
-  //findOne API
-  try {
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-      res.status(404).send("User not found");
-    } else {
-      res.send(user);
-    }
-  } catch (err) {
-    console.log(err);
-  }
-});
-
-//Get Api for all
-app.get("/feed", async (req, res) => {
-  try {
-    const user = await User.find();
-    res.send(user);
-  } catch (err) {
-    res.status(400).send("Something went wrong", err);
-  }
-});
-
-//Delete Api for user
-app.delete("/user", async (req, res) => {
-  // const userDeleted1 = await User.findByIdAndDelete({id: req.body.id}) // this is equal to only req.body.id below
-  try {
-    const userDeleted = await User.findByIdAndDelete(req.body.id);
-    res.send("User Deleted successfully");
-  } catch (err) {
-    res.status(400).send("Something went wrong");
-  }
-});
-
-//Update Api using patch
-app.patch("/user/:userId", async (req, res) => {
-  const userId = req.params?.userId;
-  const data = req.body;
-  try {
-    const ALLOWED_UPDATES = ["photoUrl", "about", "gender", "age", "skills"];
-
-    const isUpdateAllowed = Object.keys(data).every((k) =>
-      ALLOWED_UPDATES.includes(k),
-    ); //api level validation
-
-    if (!isUpdateAllowed) {
-      throw new Error("Update not allowed");
-    }
-
-    const user = await User.findByIdAndUpdate(userId, data, {
-      returnDocument: "after",
-      runValidators: true,
-    });
-    res.send("User Updated successfully");
-  } catch (err) {
-    res.status(400).send("UPDATE FAILED:" + err.message);
-  }
-});
 
 connectDB()
   .then(() => {

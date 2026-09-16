@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
-const validator = require("validator")
+const validator = require("validator");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt")
 
 const userSchema = new mongoose.Schema(
   {
@@ -34,8 +36,9 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      validate(value){
-        if(!validator.isStrongPassword(value)){ // db level validation using validator library
+      validate(value) {
+        if (!validator.isStrongPassword(value)) {
+          // db level validation using validator library
           throw new Error("Enter a Strong Password: " + value);
         }
       },
@@ -59,8 +62,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "https://geographyandyou.com/images/user-profile.png",
 
-       validate(value){
-        if(!validator.isURL(value)){
+      validate(value) {
+        if (!validator.isURL(value)) {
           throw new Error("Invalid Photo URL: " + value);
         }
       },
@@ -87,6 +90,30 @@ const userSchema = new mongoose.Schema(
   },
 );
 
+userSchema.methods.getJWT = async function () {
+  const user = this;
+
+  const token = jwt.sign(
+    { _id: user._id },
+    "dev@TINDER123",
+    { expiresIn: "7d" },
+  ); //1st parameter is some data to hide and 2nd is secret/private key
+
+  return token;
+};
+
+userSchema.methods.validatePassword = async function (passwordInputByUser) {
+  const user = this;
+  const passwordHash = user.password;
+
+  const isPasswordValid = await bcrypt.compare(
+    passwordInputByUser,
+    passwordHash,
+  );
+
+  return isPasswordValid;
+
+};
 const User = mongoose.model("User", userSchema);
 
 module.exports = User;
