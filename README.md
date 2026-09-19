@@ -16,7 +16,7 @@ The backend is being built incrementally using **Node.js, Express.js, MongoDB, a
 - **Mongoose** – MongoDB ODM
 - **JavaScript** – Programming language
 - **bcrypt** – Password hashing
-- **JWT** – Authentication
+- **JWT** – Authentication and authorization
 - **cookie-parser** – Cookie handling
 - **validator** – Data validation
 - **Nodemon** – Development server auto-restart
@@ -25,19 +25,20 @@ The backend is being built incrementally using **Node.js, Express.js, MongoDB, a
 
 ```text
 devtinder-backend/
-│
 ├── src/
 │   ├── config/
 │   │   └── database.js
-│   │
+│   ├── middlewares/
+│   │   └── auth.js
 │   ├── models/
 │   │   └── user.js
-│   │
+│   ├── routers/
+│   │   ├── auth.js
+│   │   ├── profile.js
+│   │   └── request.js
 │   ├── utils/
 │   │   └── validation.js
-│   │
 │   └── app.js
-│
 ├── .gitignore
 ├── package.json
 ├── package-lock.json
@@ -46,27 +47,15 @@ devtinder-backend/
 
 ## ⚙️ Installation
 
-Clone the repository:
-
 ```bash
 git clone https://github.com/Madhan-011/devTinder-backend.git
-```
-
-Navigate into the project:
-
-```bash
 cd devTinder-backend
-```
-
-Install dependencies:
-
-```bash
 npm install
 ```
 
 ## 🔐 Environment Variables
 
-Create a `.env` file in the project root and add your MongoDB connection string and JWT secret:
+Create a `.env` file in the project root:
 
 ```env
 MONGODB_URI=your_mongodb_connection_string
@@ -79,37 +68,23 @@ JWT_SECRET=your_jwt_secret
 
 ### Development
 
-Run the project using Nodemon:
-
 ```bash
 npm run dev
 ```
 
 ### Production
 
-Run the project using Node.js:
-
 ```bash
 npm start
 ```
 
-The server runs on:
-
-```text
-http://localhost:7777
-```
+The server runs on `http://localhost:7777`.
 
 ## 🗄️ Database
 
-The application uses **MongoDB** with **Mongoose**.
-
-The database connection is established before starting the Express server. The server starts listening on port `7777` only after a successful database connection.
+The application uses **MongoDB** with **Mongoose**. The database connection is established before starting the Express server.
 
 ## 👤 User Model
-
-A `User` model has been created using a Mongoose schema with validation and default values.
-
-### Current Fields
 
 | Field | Type | Description |
 |---|---|---|
@@ -127,8 +102,6 @@ A `User` model has been created using a Mongoose schema with validation and defa
 
 ### Schema Validation
 
-The user schema currently includes:
-
 - Required fields
 - Minimum and maximum length validation
 - Email validation
@@ -140,231 +113,76 @@ The user schema currently includes:
 - Maximum 10 skills
 - Automatic timestamps
 
-## 🔗 Current API Endpoints
+## 🔗 API Endpoints
 
-### 1. Create User
+### Authentication Router
 
-**POST** `/signup`
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/signup` | Create a new user |
+| POST | `/login` | Authenticate user and issue JWT cookie |
+| POST | `/logout` | Clear authentication cookie |
 
-Creates a new user and stores the password securely using **bcrypt hashing**.
+### Profile Router
 
-```text
-POST http://localhost:7777/signup
-```
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/profile/view` | View authenticated user's profile |
+| PATCH | `/profile/edit` | Update authenticated user's profile |
+| PATCH | `/profile/password` | Change authenticated user's password |
 
-Example request:
+### Connection Request Router
 
-```json
-{
-  "firstName": "Anandhu",
-  "lastName": "Aji",
-  "email": "anandhu@gmail.com",
-  "password": "StrongPassword@123"
-}
-```
+| Method | Endpoint | Status |
+|---|---|---|
+| POST | `/sendConnectionRequest` | Initial implementation |
+| POST | `/request/send/interested/:userId` | Planned |
+| POST | `/request/send/ignored/:userId` | Planned |
+| POST | `/request/review/accepted/:requestId` | Planned |
+| POST | `/request/review/rejected/:requestId` | Planned |
 
-The signup process:
-
-```text
-Request
-   ↓
-Validate signup data
-   ↓
-Hash password using bcrypt
-   ↓
-Create User document
-   ↓
-Save to MongoDB
-   ↓
-Send response
-```
-
----
-
-### 2. Login User
-
-**POST** `/login`
-
-Authenticates a user using their email and password.
+Planned request statuses:
 
 ```text
-POST http://localhost:7777/login
+interested
+ignored
+accepted
+rejected
 ```
 
-Example request:
+## 🔐 Authentication & Authorization
 
-```json
-{
-  "email": "anandhu@gmail.com",
-  "password": "StrongPassword@123"
-}
-```
-
-The login process:
+DevTinder uses **JWT-based authentication** with cookies.
 
 ```text
-Email + Password
-       ↓
-Find user by email
-       ↓
-Compare password using bcrypt
-       ↓
+LOGIN
+  ↓
+Verify Email & Password
+  ↓
 Generate JWT
-       ↓
-Store JWT in cookie
-       ↓
-Login successful
-```
-
----
-
-### 3. Get User Profile
-
-**GET** `/profile`
-
-Returns the profile of the currently authenticated user.
-
-```text
-GET http://localhost:7777/profile
-```
-
-The API:
-
-1. Reads the JWT from the cookie
-2. Verifies the JWT
-3. Gets the user ID from the token
-4. Finds the user in MongoDB
-5. Returns the user profile
-
-```text
-Request
-   ↓
-Read JWT from Cookie
-   ↓
-Verify JWT
-   ↓
-Extract User ID
-   ↓
+  ↓
+Store JWT in Cookie
+  ↓
+Protected API Request
+  ↓
+userAuth Middleware
+  ↓
+Read & Verify JWT
+  ↓
 Find User in MongoDB
-   ↓
-Return Profile
+  ↓
+req.user = user
+  ↓
+Route Handler
 ```
 
----
-
-### 4. Get One User
-
-**GET** `/user`
-
-Finds a user using their email.
-
-```text
-GET http://localhost:7777/user
-```
-
----
-
-### 5. Get All Users
-
-**GET** `/feed`
-
-Returns all users from the database.
-
-```text
-GET http://localhost:7777/feed
-```
-
----
-
-### 6. Delete User
-
-**DELETE** `/user`
-
-Deletes a user using their MongoDB document ID.
-
-```text
-DELETE http://localhost:7777/user
-```
-
-Example request:
-
-```json
-{
-  "id": "USER_ID"
-}
-```
-
----
-
-### 7. Update User Profile
-
-**PATCH** `/user/:userId`
-
-Updates allowed profile fields for a user.
-
-```text
-PATCH http://localhost:7777/user/USER_ID
-```
-
-Currently allowed fields:
-
-```text
-photoUrl
-about
-gender
-age
-skills
-```
-
-Example request:
-
-```json
-{
-  "about": "Full Stack Developer",
-  "age": 23,
-  "skills": ["JavaScript", "React", "Node.js"]
-}
-```
-
-The API uses `Object.keys().every()` to ensure that only allowed fields are updated.
-
-## 🔐 Authentication
-
-DevTinder currently uses **JWT-based authentication**.
-
-### Authentication Flow
-
-```text
-              LOGIN
-                │
-                ▼
-        Verify Email & Password
-                │
-                ▼
-          Generate JWT
-                │
-                ▼
-        Store JWT in Cookie
-                │
-                ▼
-       Access Protected APIs
-                │
-                ▼
-          Verify JWT
-                │
-                ▼
-          Get User Profile
-```
-
-JWT is currently used to identify the authenticated user.
-
-> The JWT secret should be stored securely in an environment variable and should never be committed to the repository.
+The `userAuth` middleware protects authenticated routes such as profile and connection-request APIs.
 
 ## 🔒 Password Security
 
-User passwords are **not stored as plain text**.
+Passwords are not stored as plain text.
 
-During signup:
+### Signup
 
 ```text
 Plain Password
@@ -376,7 +194,7 @@ Hashed Password
 MongoDB
 ```
 
-During login:
+### Login
 
 ```text
 Entered Password
@@ -388,15 +206,49 @@ Stored Password Hash
 Valid / Invalid
 ```
 
+The User model also provides methods for password validation and JWT generation.
+
+## 🧩 Middleware
+
+The `userAuth` middleware:
+
+1. Reads the JWT from the request cookie
+2. Verifies the JWT
+3. Extracts the user's ID
+4. Finds the user in MongoDB
+5. Attaches the user to `req.user`
+6. Passes control to the protected route
+
+Example:
+
+```js
+profileRouter.get("/profile/view", userAuth, async (req, res) => {
+  const user = req.user;
+  res.send(user);
+});
+```
+
 ## 🧪 API Testing
 
-The APIs can be tested using tools such as:
+The APIs can be tested using:
 
 - Postman
 - Thunder Client
 - Insomnia
 
-The current APIs are being tested during development before adding more features.
+Typical flow:
+
+```text
+Signup
+  ↓
+Login
+  ↓
+JWT Cookie
+  ↓
+Protected API
+  ↓
+Profile / Protected Feature
+```
 
 ## 🎯 Completed Features
 
@@ -414,28 +266,28 @@ The current APIs are being tested during development before adding more features
 - [x] Password verification using bcrypt
 - [x] JWT generation
 - [x] JWT verification
-- [x] Cookie-based token storage
-- [x] Profile API
-- [x] Get single user API
-- [x] Get all users API
-- [x] Delete user API
-- [x] Update user API
-- [x] API-level update validation
-- [x] User profile fields
+- [x] Cookie-based authentication
+- [x] Authentication middleware
+- [x] Profile view API
+- [x] Profile edit API
+- [x] Logout API
+- [x] Change password API
+- [x] Router separation
+- [x] Initial connection request API
 - [x] Mongoose timestamps
 
 ## 🚧 Planned Features
 
-- [ ] Move secrets completely to environment variables
-- [ ] Authentication middleware for protected routes
-- [ ] Logout API
-- [ ] Improved error handling
-- [ ] Login/signup response improvements
-- [ ] Developer discovery/feed logic
-- [ ] Connection requests
+- [ ] Complete connection request workflow
+- [ ] Interested/ignored request handling
 - [ ] Accept/reject connection requests
-- [ ] Send/receive developer requests
-- [ ] User profile management
+- [ ] User connections API
+- [ ] User pending requests API
+- [ ] Developer discovery/feed logic
+- [ ] Forgot password / password reset flow
+- [ ] Improved error handling
+- [ ] Improved API response structure
+- [ ] Move all secrets completely to environment variables
 - [ ] API documentation
 - [ ] Backend deployment
 - [ ] Frontend integration
@@ -455,9 +307,11 @@ This project is helping me gain practical experience with:
 - API-level validation
 - Schema-level validation
 - Password hashing
-- Authentication
+- Authentication and authorization
 - JWT
 - Cookies
+- Router architecture
+- Protected routes
 - Error handling
 - Backend project architecture
 - Full-stack application development
@@ -466,8 +320,7 @@ This project is helping me gain practical experience with:
 
 **Madhan K**
 
-GitHub:  
-https://github.com/Madhan-011
+GitHub: https://github.com/Madhan-011
 
 ---
 
